@@ -4,6 +4,9 @@ All technical procedures of the assingment is documented.
 
 Through out this document you may find links to external websites and articles which I used to troubleshoot and solve my technical challenges.
 
+All related files for this assignment are available in my public GitHub repository:
+
+[Elhamnf/go-web-hello-world](https://github.com/Elhamnf/go-web-hello-world)
 
 
 ## Task 0: Install Ubuntu 16.04 server 64bit
@@ -344,6 +347,106 @@ An example is provided in this article: "https://www.callicoder.com/docker-golan
 
     The image is accessible through: https://hub.docker.com/r/elhamnf/go-web-hello-world/tags
 
+
+## Task 9: Install a single node Kubernetes cluster using kubeadm
+
+For detailed instructions refer to:
+- [Create Cluser using Kubeadm](https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/)
+- [How to install kubernetes kubeadm](https://www.mirantis.com/blog/how-install-kubernetes-kubeadm/)
+
+### Prepare VM
+1. Change to root:
+    ```sh
+    sudo su
+    ```
+
+2. Turn off swap::
+    ```sh
+    swapoff -a
+    ```
+    comment out the reference to swap in /etc/fstab.  Start by editing the file:
+    ```sh
+    vi /etc/fstab
+    ```
+    Then comment out the appropriate line related to swap.
+
+3. Configure iptables to receive bridged network traffic. First edit the sysctl.conf file:
+    ```sh
+    vi /etc/ufw/sysctl.conf
+    ```
+    And add the following lines to the end:
+    ```sh
+    net/bridge/bridge-nf-call-ip6tables = 1
+    net/bridge/bridge-nf-call-iptables = 1
+    net/bridge/bridge-nf-call-arptables = 1
+    ```
+
+4. Reboot so the changes take effect.
+    ```sh
+    reboot
+    ```
+
+5. Install ebtables and ethtool:
+    ```sh
+    sudo su
+    apt-get install ebtables ethtool
+    ```
+
+6. Reboot once more.
+    ```sh
+    reboot
+    ```
+### Install Kubeadm
+
+1. Install kubeadm
+    ```sh
+    sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+    cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    deb https://apt.kubernetes.io/ kubernetes-xenial main
+    EOF
+    sudo apt-get update
+    sudo apt-get install -y kubelet kubeadm kubectl
+    sudo apt-mark hold kubelet kubeadm kubectl
+    ```
+
+### Create a cluster
+1. Create actual cluster
+    ```sh
+    kubeadm init --pod-network-cidr=192.168.0.0/16
+    ```
+2. Wait until init finishes and open a new terminal and execute the following commands:
+    ```sh
+    mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    ```
+3. Install the Calico network plugin:
+    ```sh
+    kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+    ```
+4. Untaint the master so that it will be available for scheduling workloads:
+    ```sh
+    kubectl taint nodes --all node-role.kubernetes.io/master-
+    ```
+
+### Deploy web app
+1. Navigate to root of the go-web-hello-world repository and create a pod using `mypod.yaml`:
+    ```sh
+    kubectl apply -f mypod.yaml
+    ```
+2. Check that pod is up and running:
+    ```sh
+    $ kubectl get pods
+    NAME                                  READY   STATUS    RESTARTS   AGE
+    go-web-hello-world-6c49d9f858-njzwv   1/1     Running   0          5s
+    ```
+3. Test the web app in host machine:
+    ```sh
+    $ curl 127.0.0.1:31080
+    Go Web Hello World!
+    ```
+    > **NOTE:** Make sure port forwarding is set properly for 31080 -> 31080 in VirtualBox networking settings
 
 
 ## Resources
